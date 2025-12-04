@@ -1,4 +1,4 @@
-# Ship Feature Detection and Re-identification
+# ResNet50 船隻特徵重識別
 
 本專案旨在進行船隻特徵檢測與重識別 (ReID)。專案使用 ResNet50 模型從船隻影像中提取特徵，並基於這些特徵執行重識別任務。
 
@@ -18,11 +18,11 @@
 
 ## 安裝說明
 
-1.  複製 (Clone) 儲存庫:
+1.  複製專案:
     ```bash
     git clone <repository-url>
     ```
-2.  安裝所需套件:
+2.  安裝相依套件:
     ```bash
     pip install -r requirements.txt
     ```
