@@ -51,5 +51,5 @@ python ship_feature_detection.py
 
 ## 資料集 (Dataset)
 
-本專案使用的資料集位於 Warships(https://github.com/scott0o0/Warships-Reid?tab=readme-ov-file)。
+本專案使用的資料集位於[Warships](https://github.com/scott0o0/Warships-Reid?tab=readme-ov-file)。
 執行train.py後資料集會被分為訓練集、驗證集、Gallery 集和 Query 集，分別位於 ship_feature/train、ship_feature/val、ship_feature/gallery 和 ship_feature/query 目錄下。
