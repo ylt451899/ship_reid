@@ -35,51 +35,6 @@ os.makedirs(os.path.join(OUTPUT_DIR, "val"), exist_ok=True)
 os.makedirs(os.path.join(OUTPUT_DIR, "gallery"), exist_ok=True)
 os.makedirs(os.path.join(OUTPUT_DIR, "query"), exist_ok=True)
 
-# # -----------------------------
-# # Step1: 整理資料
-# # -----------------------------
-# def prepare_data(data_root, train_ratio=0.8):
-#     all_classes = sorted(os.listdir(data_root))
-#     id_map = {}
-#     id_counter = 0
-#     for cls in all_classes:
-#         images = glob.glob(os.path.join(data_root, cls, "*.jpg"))
-#         random.shuffle(images)
-#         n_train = int(len(images) * train_ratio)
-#         train_imgs = images[:n_train]
-#         val_imgs = images[n_train:]
-
-#         # copy train
-#         for img_path in train_imgs:
-#             cls_name = str(id_counter)
-#             save_dir = os.path.join(OUTPUT_DIR, "train", cls_name)
-#             os.makedirs(save_dir, exist_ok=True)
-#             os.system(f'cp "{img_path}" "{save_dir}/"')
-#         # copy val
-#         for img_path in val_imgs:
-#             cls_name = str(id_counter)
-#             save_dir = os.path.join(OUTPUT_DIR, "val", cls_name)
-#             os.makedirs(save_dir, exist_ok=True)
-#             os.system(f'cp "{img_path}" "{save_dir}/"')
-
-#         id_map[cls] = id_counter
-#         id_counter += 1
-#     # 可選將 val 部分作 query/gallery
-#     for cls in all_classes:
-#         val_dir = os.path.join(OUTPUT_DIR, "val", str(id_map[cls]))
-#         imgs = glob.glob(os.path.join(val_dir, "*.jpg"))
-#         random.shuffle(imgs)
-#         mid = len(imgs)//2
-#         query_imgs = imgs[:mid]
-#         gallery_imgs = imgs[mid:]
-#         for img in query_imgs:
-#             os.makedirs(os.path.join(OUTPUT_DIR, "query"), exist_ok=True)
-#             os.system(f'cp "{img}" "{OUTPUT_DIR}/query/"')
-#         for img in gallery_imgs:
-#             os.makedirs(os.path.join(OUTPUT_DIR, "gallery"), exist_ok=True)
-#             os.system(f'cp "{img}" "{OUTPUT_DIR}/gallery/"')
-#     return id_map
-
 # -----------------------------
 # Step1: 整理資料 (修正 os.system 的部分)
 # -----------------------------
@@ -310,68 +265,6 @@ def main():
             break
             
     torch.save(model.state_dict(), os.path.join(OUTPUT_DIR,"resnet50_ship.pth"))
-
-    # Step8: 特徵抽取 + 建立 FAISS index
-    # ... (extract_features 函數內容保持不變) ...
-    def extract_features(model, folder):
-        model.eval()
-        features = []
-        files = sorted(glob.glob(os.path.join(folder, "*.jpg")))
-        for f in tqdm(files):
-            img = Image.open(f).convert("RGB")
-            img = transform_test(img).unsqueeze(0).to(DEVICE)
-            with torch.no_grad():
-                feat = model(img).cpu().numpy()
-            features.append(feat[0])
-            np.save(f+".npy", feat[0])
-        features = np.array(features).astype("float32")
-        return features, files
-        
-    gallery_features, gallery_files = extract_features(model, os.path.join(OUTPUT_DIR,"gallery"))
-    
-    if len(gallery_features) == 0:
-        print("Error: Gallery dataset is empty. Cannot build FAISS index.")
-        return
-        
-    index = faiss.IndexFlatL2(gallery_features.shape[1])
-    index.add(gallery_features)
-    faiss.write_index(index, os.path.join(OUTPUT_DIR,"gallery.index"))
-    with open(os.path.join(OUTPUT_DIR,"gallery_files.json"),"w") as f:
-        json.dump(gallery_files,f)
-
-    # Step9: Query 比對
-    # ... (query_image 函數內容保持不變) ...
-    def query_image(model, img_path, index, gallery_files, topk=5, threshold=THRESHOLD):
-        model.eval()
-        img = Image.open(img_path).convert("RGB")
-        img = transform_test(img).unsqueeze(0).to(DEVICE)
-        with torch.no_grad():
-            feat = model(img).cpu().numpy().astype("float32")
-        D, I = index.search(feat, topk)
-        results = []
-        for d, i in zip(D[0], I[0]):
-            same = d < threshold
-            results.append((gallery_files[i], float(d), same))
-        return results
-
-    # 範例 query
-    index = faiss.read_index(os.path.join(OUTPUT_DIR,"gallery.index"))
-    with open(os.path.join(OUTPUT_DIR,"gallery_files.json"),"r") as f:
-        gallery_files = json.load(f)
-
-    query_folder = os.path.join(OUTPUT_DIR,"query")
-    query_files = os.listdir(query_folder)
-    
-    if not query_files:
-        print("Warning: Query folder is empty. Skipping example query.")
-        return
-
-    query_path = os.path.join(query_folder, query_files[0])
-    results = query_image(model, query_path, index, gallery_files)
-    print("Query Results:")
-    for r in results:
-        print(r)
-
 
 if __name__ == '__main__':
     # 確保所有執行代碼都在此處呼叫 main()
